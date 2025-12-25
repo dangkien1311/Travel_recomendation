@@ -329,14 +329,26 @@ class TravelRecommendationService:
         # Apply budget filter if specified
         if budget and budget > 0:
             # Filter hotels: total cost (per night * nights * rooms) must be within budget portion
-            hotel_budget = budget * 0.5  # Allocate 50% of budget to hotels
+            hotel_budget = budget * 0.6  # Allocate 60% of budget to hotels (increased from 50%)
             transport_budget = budget * 0.3  # Allocate 30% to transport
             
-            hotels = [h for h in hotels if h['price_per_night'] * nights * rooms <= hotel_budget]
-            transports = [t for t in transports if t['price_per_person'] * people <= transport_budget]
+            # Filter but keep at least some hotels
+            filtered_hotels = [h for h in hotels if h['price_per_night'] * nights * rooms <= hotel_budget]
+            if filtered_hotels:
+                hotels = filtered_hotels
+            # If no hotels match budget, keep all but sort by price
+            else:
+                hotels = sorted(hotels, key=lambda x: x['price_per_night'])
+            
+            filtered_transports = [t for t in transports if t['price_per_person'] * people <= transport_budget]
+            if filtered_transports:
+                transports = filtered_transports
+            
             # Filter local transport too
             local_transport_budget = budget * 0.1  # 10% for local transport
-            local_transports = [lt for lt in local_transports if lt.get('total_price', 0) <= local_transport_budget]
+            filtered_local = [lt for lt in local_transports if lt.get('total_price', 0) <= local_transport_budget]
+            if filtered_local:
+                local_transports = filtered_local
         
         # Calculate price summary
         cheapest_hotel = hotels[0] if hotels else None

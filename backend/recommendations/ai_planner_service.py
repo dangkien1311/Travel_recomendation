@@ -147,6 +147,49 @@ class TravelPlannerService:
         ]
     }
     
+    HOTEL_PREFERENCES = {
+        'luxury': {
+            'description': '5-star luxury hotels with premium amenities',
+            'price_range': (300, 800),
+            'amenities': ['Spa', 'Fine Dining', 'Concierge', 'Pool', 'Gym']
+        },
+        'boutique': {
+            'description': 'Unique boutique hotels with personalized service',
+            'price_range': (150, 350),
+            'amenities': ['Unique Decor', 'Personalized Service', 'Local Experience']
+        },
+        'resort': {
+            'description': 'All-inclusive resorts with activities',
+            'price_range': (200, 500),
+            'amenities': ['Pool', 'Beach Access', 'Entertainment', 'All-Inclusive']
+        },
+        'mid-range': {
+            'description': 'Comfortable mid-range hotels',
+            'price_range': (80, 180),
+            'amenities': ['Free WiFi', 'Breakfast', 'Comfortable Rooms']
+        },
+        'budget': {
+            'description': 'Affordable budget-friendly accommodations',
+            'price_range': (30, 80),
+            'amenities': ['Free WiFi', 'Clean Rooms', 'Central Location']
+        },
+        'hostel': {
+            'description': 'Social hostels for backpackers',
+            'price_range': (15, 50),
+            'amenities': ['Social Areas', 'Shared Facilities', 'Tours']
+        },
+        'apartment': {
+            'description': 'Self-catering apartments',
+            'price_range': (70, 200),
+            'amenities': ['Kitchen', 'Living Space', 'Home-like Experience']
+        },
+        'unique': {
+            'description': 'Unique stays like treehouses, igloos, caves',
+            'price_range': (100, 400),
+            'amenities': ['Unique Experience', 'Instagram-worthy', 'Adventure']
+        }
+    }
+    
     def __init__(self):
         pass
     
@@ -155,9 +198,10 @@ class TravelPlannerService:
         origin: str,
         destination: str,
         travel_type: str,
-        budget: int,
-        num_days: int,
-        num_people: int,
+        hotel_preference: str = 'mid-range',
+        budget: int = 2000,
+        num_days: int = 5,
+        num_people: int = 2,
         hotels: List[Dict] = None,
         transports: List[Dict] = None,
         attractions: List[Dict] = None
@@ -169,6 +213,7 @@ class TravelPlannerService:
             origin: Starting city
             destination: Destination city
             travel_type: Type(s) of travel experience (comma-separated for multiple)
+            hotel_preference: Preferred hotel type (luxury, boutique, mid-range, budget, etc.)
             budget: Total budget in USD
             num_days: Number of days for the trip
             num_people: Number of travelers
@@ -188,6 +233,20 @@ class TravelPlannerService:
         # Merge activities from all selected travel types
         merged_config = self._merge_travel_configs(travel_types_list)
         
+        # Ensure hotel_preference has a valid value
+        if not hotel_preference or hotel_preference not in self.HOTEL_PREFERENCES:
+            hotel_preference = 'mid-range'
+        
+        # Get hotel preference info
+        hotel_pref = self.HOTEL_PREFERENCES.get(hotel_preference, self.HOTEL_PREFERENCES['mid-range'])
+        
+        # Filter and sort hotels based on preference
+        filtered_hotels = self._filter_hotels_by_preference(hotels or [], hotel_preference, hotel_pref)
+        
+        # If filtering returned empty, use original hotels sorted by price
+        if not filtered_hotels and hotels:
+            filtered_hotels = sorted(hotels, key=lambda x: x.get('price_per_night', 0))
+        
         # Calculate budgets
         daily_budget = budget // num_days if num_days > 0 else budget
         per_person_budget = budget // num_people if num_people > 0 else budget
@@ -199,7 +258,7 @@ class TravelPlannerService:
             travel_config=merged_config,
             num_days=num_days,
             daily_budget=daily_budget,
-            hotels=hotels or [],
+            hotels=filtered_hotels,
             transports=transports or [],
             attractions=attractions or []
         )
@@ -212,8 +271,8 @@ class TravelPlannerService:
         recommended_hotel = None
         recommended_transport = None
         
-        if hotels and len(hotels) > 0:
-            recommended_hotel = hotels[0]
+        if filtered_hotels and len(filtered_hotels) > 0:
+            recommended_hotel = filtered_hotels[0]
             hotel_cost = recommended_hotel.get('price_per_night', 0) * num_days
         
         if transports and len(transports) > 0:
@@ -229,6 +288,10 @@ class TravelPlannerService:
         # Generate tips
         tips = self._generate_tips(destination, travel_types_list[0] if travel_types_list else 'culture')
         
+        # Add hotel-specific tips
+        hotel_tips = self._generate_hotel_tips(hotel_preference)
+        tips.extend(hotel_tips)
+        
         # Create description from selected types
         type_descriptions = []
         for t in travel_types_list:
@@ -243,6 +306,8 @@ class TravelPlannerService:
                 'destination': destination,
                 'travel_type': travel_type,
                 'travel_types': travel_types_list,
+                'hotel_preference': hotel_preference,
+                'hotel_preference_description': hotel_pref['description'],
                 'travel_type_description': combined_description,
                 'budget': budget,
                 'num_days': num_days,
@@ -468,6 +533,117 @@ class TravelPlannerService:
         tips.extend(type_tips.get(travel_type.lower(), [])[:2])
         
         return tips
+    
+    def _filter_hotels_by_preference(
+        self,
+        hotels: List[Dict],
+        hotel_preference: str,
+        hotel_pref_config: Dict
+    ) -> List[Dict]:
+        """
+        Filter and sort hotels based on user's preference.
+        
+        Args:
+            hotels: List of available hotels
+            hotel_preference: User's hotel preference (luxury, budget, etc.)
+            hotel_pref_config: Configuration for the preference
+        
+        Returns:
+            Filtered and sorted list of hotels
+        """
+        if not hotels:
+            return []
+        
+        price_min, price_max = hotel_pref_config.get('price_range', (0, 1000))
+        
+        # Score hotels based on how well they match the preference
+        scored_hotels = []
+        for hotel in hotels:
+            price = hotel.get('price_per_night', 0) or 0
+            score = 0
+            
+            # Price range matching
+            if price_min <= price <= price_max:
+                score += 50  # Perfect price match
+            elif price < price_min:
+                # Slightly below range - still good for budget-conscious
+                score += 30
+            else:
+                # Above range - penalize but still include
+                score += max(0, 20 - (price - price_max) / 50)
+            
+            # Rating bonus
+            rating = hotel.get('rating', 0) or 0
+            score += rating * 5
+            
+            # Amenity matching
+            hotel_amenities = set(hotel.get('amenities', []) or [])
+            preferred_amenities = set(hotel_pref_config.get('amenities', []) or [])
+            matching_amenities = len(hotel_amenities & preferred_amenities)
+            score += matching_amenities * 5
+            
+            # Star rating alignment with preference
+            stars = hotel.get('stars', 3) or hotel.get('star_rating', 3) or 3
+            if hotel_preference == 'luxury' and stars >= 5:
+                score += 20
+            elif hotel_preference == 'boutique' and 3 <= stars <= 4:
+                score += 15
+            elif hotel_preference == 'mid-range' and 3 <= stars <= 4:
+                score += 15
+            elif hotel_preference == 'budget' and stars <= 3:
+                score += 15
+            elif hotel_preference == 'hostel' and stars <= 2:
+                score += 15
+            
+            scored_hotels.append((score, hotel))
+        
+        # Sort by score (highest first)
+        scored_hotels.sort(key=lambda x: x[0], reverse=True)
+        
+        # Return hotels sorted by preference
+        return [hotel for score, hotel in scored_hotels]
+    
+    def _generate_hotel_tips(self, hotel_preference: str) -> List[str]:
+        """Generate tips based on hotel preference"""
+        tips_by_preference = {
+            'luxury': [
+                "Book directly with the hotel for potential upgrades",
+                "Ask about spa packages and fine dining reservations"
+            ],
+            'boutique': [
+                "These hotels often have unique local experiences",
+                "Ask the concierge for insider local recommendations"
+            ],
+            'resort': [
+                "Check what's included in your all-inclusive package",
+                "Book activities early as they fill up fast"
+            ],
+            'mid-range': [
+                "Check for loyalty programs for future discounts",
+                "Ask about included breakfast options"
+            ],
+            'budget': [
+                "Read recent reviews for cleanliness feedback",
+                "Location is key - ensure good public transport access"
+            ],
+            'hostel': [
+                "Bring a lock for your belongings",
+                "Join hostel activities to meet fellow travelers"
+            ],
+            'apartment': [
+                "Stock up on groceries to save on dining",
+                "Ask the host for local tips and recommendations"
+            ],
+            'unique': [
+                "Read carefully what amenities are available",
+                "Book early as unique stays sell out quickly"
+            ]
+        }
+        
+        return tips_by_preference.get(hotel_preference, [
+            "Book early for better rates",
+            "Check cancellation policies before booking"
+        ])
     
     def get_conversation_questions(self) -> List[Dict[str, str]]:
         """Get the conversation flow questions for advanced search"""

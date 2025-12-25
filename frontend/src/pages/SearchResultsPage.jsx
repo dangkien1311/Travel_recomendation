@@ -8,6 +8,7 @@ import LocalTransportCard from '../components/LocalTransportCard';
 import AttractionCard from '../components/AttractionCard';
 import PriceSummary from '../components/PriceSummary';
 import LoadingSpinner from '../components/LoadingSpinner';
+import AITripRecommendation from '../components/AITripRecommendation';
 import { searchTravel } from '../services/api';
 
 function SearchResultsPage() {
@@ -265,8 +266,8 @@ function SearchResultsPage() {
               )}
             </div>
 
-            {/* Sidebar - Price Summary */}
-            <div className="lg:w-80">
+            {/* Sidebar - Price Summary & AI Trip */}
+            <div className="lg:w-80 space-y-4">
               <PriceSummary
                 summary={results.summary}
                 selectedHotel={selectedHotel}
@@ -274,6 +275,9 @@ function SearchResultsPage() {
                 selectedLocalTransport={selectedLocalTransport}
                 selectedAttractions={selectedAttractions}
               />
+              
+              {/* AI Trip Plan Button - Under Price Summary */}
+              <AITripRecommendation searchData={searchData} results={results} />
             </div>
           </div>
         )}

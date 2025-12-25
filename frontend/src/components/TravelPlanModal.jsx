@@ -165,6 +165,12 @@ function TravelPlanModal({ isOpen, onClose, plan }) {
                   {planData?.travel_type} Trip
                 </span>
               )}
+              {planData?.hotel_preference && (
+                <span className="px-3 py-1 bg-amber-100 text-amber-700 rounded-full text-sm font-medium capitalize">
+                  <Hotel className="w-4 h-4 inline mr-1" />
+                  {planData.hotel_preference.replace('-', ' ')}
+                </span>
+              )}
               <span className="px-3 py-1 bg-gray-200 text-gray-700 rounded-full text-sm">
                 <Users className="w-4 h-4 inline mr-1" />
                 {planData?.num_people} travelers
@@ -186,10 +192,17 @@ function TravelPlanModal({ isOpen, onClose, plan }) {
           {/* Recommended Hotel */}
           {planData?.recommended_hotel && (
             <div className="px-6 pb-4">
-              <h3 className="text-lg font-bold text-gray-900 mb-3 flex items-center gap-2">
-                <Hotel className="w-5 h-5 text-primary-500" />
-                Recommended Accommodation
-              </h3>
+              <div className="flex items-center justify-between mb-3">
+                <h3 className="text-lg font-bold text-gray-900 flex items-center gap-2">
+                  <Hotel className="w-5 h-5 text-primary-500" />
+                  Recommended Accommodation
+                </h3>
+                {planData?.hotel_preference && (
+                  <span className="text-sm text-gray-500 capitalize">
+                    {planData.hotel_preference_description || `${planData.hotel_preference.replace('-', ' ')} style`}
+                  </span>
+                )}
+              </div>
               <HotelCard 
                 hotel={planData.recommended_hotel} 
                 isSelected={true}

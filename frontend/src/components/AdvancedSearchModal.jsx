@@ -1,5 +1,5 @@
 import { useState } from 'react';
-import { X, Sparkles, MapPin, Navigation, Compass, Users, DollarSign, Calendar, Send, Loader2 } from 'lucide-react';
+import { X, Sparkles, MapPin, Navigation, Compass, Users, DollarSign, Calendar, Send, Loader2, Hotel } from 'lucide-react';
 import { generateAITravelPlan } from '../services/api';
 
 const TRAVEL_TYPES = [
@@ -13,6 +13,17 @@ const TRAVEL_TYPES = [
   { id: 'romantic', label: 'Romantic', emoji: '💕', description: 'Couples activities, fine dining' },
 ];
 
+const HOTEL_TYPES = [
+  { id: 'luxury', label: 'Luxury', emoji: '🏰', description: '5-star hotels, premium amenities', priceRange: '$$$$$' },
+  { id: 'boutique', label: 'Boutique', emoji: '🏨', description: 'Unique, stylish, personalized', priceRange: '$$$$' },
+  { id: 'resort', label: 'Resort', emoji: '🌴', description: 'All-inclusive, pools, activities', priceRange: '$$$$' },
+  { id: 'mid-range', label: 'Mid-Range', emoji: '🛏️', description: 'Comfortable, good value', priceRange: '$$$' },
+  { id: 'budget', label: 'Budget', emoji: '💰', description: 'Affordable, clean, basic', priceRange: '$$' },
+  { id: 'hostel', label: 'Hostel', emoji: '🎒', description: 'Social, backpacker-friendly', priceRange: '$' },
+  { id: 'apartment', label: 'Apartment', emoji: '🏠', description: 'Self-catering, home-like', priceRange: '$$$' },
+  { id: 'unique', label: 'Unique Stays', emoji: '🏕️', description: 'Treehouses, igloos, caves', priceRange: '$$$$' },
+];
+
 function AdvancedSearchModal({ isOpen, onClose, onPlanGenerated }) {
   const [step, setStep] = useState(0);
   const [isLoading, setIsLoading] = useState(false);
@@ -21,6 +32,7 @@ function AdvancedSearchModal({ isOpen, onClose, onPlanGenerated }) {
     origin: '',
     destination: '',
     travel_types: [], // Changed to array for multiple selection
+    hotel_preference: '', // Hotel preference
     num_days: 5,
     num_people: 2,
     budget: 2000,
@@ -43,7 +55,7 @@ function AdvancedSearchModal({ isOpen, onClose, onPlanGenerated }) {
   };
 
   const nextStep = () => {
-    if (step < 5) setStep(step + 1);
+    if (step < 6) setStep(step + 1);
   };
 
   const prevStep = () => {
@@ -57,9 +69,12 @@ function AdvancedSearchModal({ isOpen, onClose, onPlanGenerated }) {
       // Convert travel_types array to comma-separated string for backend
       const submitData = {
         ...formData,
-        travel_type: formData.travel_types.join(',')
+        travel_type: formData.travel_types.join(',') || 'culture',
+        hotel_preference: formData.hotel_preference || 'mid-range'
       };
+      console.log('Submitting travel plan:', submitData);
       const result = await generateAITravelPlan(submitData);
+      console.log('Result:', result);
       if (result && result.success) {
         onPlanGenerated(result);
         onClose();
@@ -69,6 +84,7 @@ function AdvancedSearchModal({ isOpen, onClose, onPlanGenerated }) {
           origin: '',
           destination: '',
           travel_types: [],
+          hotel_preference: '',
           num_days: 5,
           num_people: 2,
           budget: 2000,
@@ -89,8 +105,9 @@ function AdvancedSearchModal({ isOpen, onClose, onPlanGenerated }) {
       case 0: return formData.origin.trim().length > 0;
       case 1: return formData.destination.trim().length > 0;
       case 2: return formData.travel_types.length > 0; // At least one selected
-      case 3: return formData.num_days > 0 && formData.num_people > 0;
-      case 4: return formData.budget > 0;
+      case 3: return formData.hotel_preference.length > 0; // Hotel preference selected
+      case 4: return formData.num_days > 0 && formData.num_people > 0;
+      case 5: return formData.budget > 0;
       default: return true;
     }
   };
@@ -188,6 +205,37 @@ function AdvancedSearchModal({ isOpen, onClose, onPlanGenerated }) {
 
       case 3:
         return (
+          <div className="space-y-4">
+            <div className="text-center mb-6">
+              <Hotel className="w-12 h-12 text-primary-500 mx-auto mb-3" />
+              <h3 className="text-xl font-bold text-gray-900">Where would you like to stay?</h3>
+              <p className="text-gray-500">Choose your preferred accommodation style</p>
+            </div>
+            <div className="grid grid-cols-2 gap-3">
+              {HOTEL_TYPES.map((type) => (
+                <button
+                  key={type.id}
+                  onClick={() => handleChange('hotel_preference', type.id)}
+                  className={`p-4 rounded-lg border-2 text-left transition-all ${
+                    formData.hotel_preference === type.id
+                      ? 'border-primary-500 bg-primary-50 ring-2 ring-primary-200'
+                      : 'border-gray-200 hover:border-gray-300'
+                  }`}
+                >
+                  <div className="flex items-start justify-between">
+                    <div className="text-2xl mb-1">{type.emoji}</div>
+                    <span className="text-xs font-medium text-primary-600">{type.priceRange}</span>
+                  </div>
+                  <div className="font-semibold text-gray-900">{type.label}</div>
+                  <div className="text-xs text-gray-500">{type.description}</div>
+                </button>
+              ))}
+            </div>
+          </div>
+        );
+
+      case 4:
+        return (
           <div className="space-y-6">
             <div className="text-center mb-6">
               <Calendar className="w-12 h-12 text-primary-500 mx-auto mb-3" />
@@ -240,7 +288,7 @@ function AdvancedSearchModal({ isOpen, onClose, onPlanGenerated }) {
           </div>
         );
 
-      case 4:
+      case 5:
         return (
           <div className="space-y-4">
             <div className="text-center mb-6">
@@ -288,7 +336,7 @@ function AdvancedSearchModal({ isOpen, onClose, onPlanGenerated }) {
           </div>
         );
 
-      case 5:
+      case 6:
         return (
           <div className="space-y-4">
             <div className="text-center mb-6">
@@ -324,6 +372,13 @@ function AdvancedSearchModal({ isOpen, onClose, onPlanGenerated }) {
                     );
                   })}
                 </div>
+              </div>
+              <div className="flex justify-between items-start">
+                <span className="text-gray-600">Accommodation:</span>
+                <span className="font-medium capitalize">
+                  {HOTEL_TYPES.find(h => h.id === formData.hotel_preference)?.emoji}{' '}
+                  {formData.hotel_preference.replace('-', ' ')}
+                </span>
               </div>
               <div className="flex justify-between">
                 <span className="text-gray-600">Duration:</span>
@@ -366,7 +421,7 @@ function AdvancedSearchModal({ isOpen, onClose, onPlanGenerated }) {
         {/* Progress */}
         <div className="px-4 pt-4">
           <div className="flex gap-1">
-            {[0, 1, 2, 3, 4, 5].map((i) => (
+            {[0, 1, 2, 3, 4, 5, 6].map((i) => (
               <div
                 key={i}
                 className={`h-1 flex-1 rounded-full ${
@@ -375,7 +430,7 @@ function AdvancedSearchModal({ isOpen, onClose, onPlanGenerated }) {
               />
             ))}
           </div>
-          <p className="text-xs text-gray-500 mt-2">Step {step + 1} of 6</p>
+          <p className="text-xs text-gray-500 mt-2">Step {step + 1} of 7</p>
         </div>
 
         {/* Content */}
@@ -394,7 +449,7 @@ function AdvancedSearchModal({ isOpen, onClose, onPlanGenerated }) {
             </button>
           )}
           
-          {step < 5 ? (
+          {step < 6 ? (
             <button
               onClick={nextStep}
               disabled={!canProceed()}

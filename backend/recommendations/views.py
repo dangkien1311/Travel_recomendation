@@ -267,54 +267,70 @@ class AITravelPlannerView(APIView):
         """Generate smart travel plan"""
         from .ai_planner_service import TravelPlannerService
         
-        data = request.data
+        try:
+            data = request.data
+            
+            # Validate required fields
+            required_fields = ['origin', 'destination', 'travel_type', 'budget', 'num_days', 'num_people']
+            for field in required_fields:
+                if field not in data:
+                    return Response(
+                        {'error': f'Missing required field: {field}'},
+                        status=status.HTTP_400_BAD_REQUEST
+                    )
+            
+            # Get travel recommendations first (hotels, transport, attractions)
+            service = TravelRecommendationService()
+            
+            # Calculate dates (use tomorrow as check_in for AI planning)
+            from datetime import datetime, timedelta
+            check_in = (datetime.now() + timedelta(days=1)).strftime('%Y-%m-%d')
+            check_out = (datetime.now() + timedelta(days=1 + int(data['num_days']))).strftime('%Y-%m-%d')
+            
+            recommendations = service.get_recommendations(
+                origin=data.get('origin', ''),
+                destination=data['destination'],
+                check_in=check_in,
+                check_out=check_out,
+                people=int(data['num_people']),
+                rooms=max(1, int(data['num_people']) // 2),
+                budget=int(data.get('budget', 0))
+            )
+            
+            # Debug: Log hotel count
+            print(f"AI Planner - Hotels found: {len(recommendations.get('hotels', []))}")
+            if recommendations.get('hotels'):
+                print(f"First hotel: {recommendations['hotels'][0].get('name')} - ${recommendations['hotels'][0].get('price_per_night')}/night")
+            
+            # Generate smart travel plan
+            planner = TravelPlannerService()
+            
+            plan = planner.generate_travel_plan(
+                origin=data['origin'],
+                destination=data['destination'],
+                travel_type=data['travel_type'],
+                hotel_preference=data.get('hotel_preference', 'mid-range'),
+                budget=int(data['budget']),
+                num_days=int(data['num_days']),
+                num_people=int(data['num_people']),
+                hotels=recommendations.get('hotels', []),
+                transports=recommendations.get('transports', []),
+                attractions=recommendations.get('attractions', [])
+            )
+            
+            # Combine with recommendations
+            plan['recommendations'] = recommendations
+            
+            return Response(plan, status=status.HTTP_200_OK)
         
-        # Validate required fields
-        required_fields = ['origin', 'destination', 'travel_type', 'budget', 'num_days', 'num_people']
-        for field in required_fields:
-            if field not in data:
-                return Response(
-                    {'error': f'Missing required field: {field}'},
-                    status=status.HTTP_400_BAD_REQUEST
-                )
-        
-        # Get travel recommendations first (hotels, transport, attractions)
-        service = TravelRecommendationService()
-        
-        # Calculate dates (use tomorrow as check_in for AI planning)
-        from datetime import datetime, timedelta
-        check_in = (datetime.now() + timedelta(days=1)).strftime('%Y-%m-%d')
-        check_out = (datetime.now() + timedelta(days=1 + int(data['num_days']))).strftime('%Y-%m-%d')
-        
-        recommendations = service.get_recommendations(
-            origin=data.get('origin', ''),
-            destination=data['destination'],
-            check_in=check_in,
-            check_out=check_out,
-            people=int(data['num_people']),
-            rooms=max(1, int(data['num_people']) // 2),
-            budget=int(data.get('budget', 0))
-        )
-        
-        # Generate smart travel plan
-        planner = TravelPlannerService()
-        
-        plan = planner.generate_travel_plan(
-            origin=data['origin'],
-            destination=data['destination'],
-            travel_type=data['travel_type'],
-            budget=int(data['budget']),
-            num_days=int(data['num_days']),
-            num_people=int(data['num_people']),
-            hotels=recommendations.get('hotels', []),
-            transports=recommendations.get('transports', []),
-            attractions=recommendations.get('attractions', [])
-        )
-        
-        # Combine with recommendations
-        plan['recommendations'] = recommendations
-        
-        return Response(plan, status=status.HTTP_200_OK)
+        except Exception as e:
+            import traceback
+            print(f"AI Planner Error: {str(e)}")
+            print(traceback.format_exc())
+            return Response(
+                {'error': f'Failed to generate plan: {str(e)}'},
+                status=status.HTTP_500_INTERNAL_SERVER_ERROR
+            )
 
 
 @api_view(['GET'])
