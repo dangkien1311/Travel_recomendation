@@ -127,38 +127,77 @@ class MockHotelService:
 class MockTransportService:
     """
     Mock service for transport data.
-    In production, you could integrate with:
-    - Amadeus Flight Search API
-    - Skyscanner API
-    - Rome2Rio API
+    Separates inter-city transport (flights, trains) from local transport (car rental, taxi).
     """
     
-    TRANSPORT_TYPES = [
+    # Inter-city transport: Getting FROM origin TO destination
+    INTERCITY_TRANSPORT = [
         {'type': 'flight', 'name': 'Economy Flight', 'base_price': 200, 'duration_range': (60, 180)},
-        {'type': 'flight', 'name': 'Business Flight', 'base_price': 500, 'duration_range': (60, 180)},
-        {'type': 'train', 'name': 'Express Train', 'base_price': 80, 'duration_range': (120, 360)},
+        {'type': 'flight', 'name': 'Business Class Flight', 'base_price': 500, 'duration_range': (60, 180)},
+        {'type': 'flight', 'name': 'Premium Economy Flight', 'base_price': 350, 'duration_range': (60, 180)},
+        {'type': 'train', 'name': 'High-Speed Train', 'base_price': 80, 'duration_range': (120, 360)},
         {'type': 'train', 'name': 'Standard Train', 'base_price': 40, 'duration_range': (180, 480)},
-        {'type': 'bus', 'name': 'Luxury Bus', 'base_price': 50, 'duration_range': (240, 720)},
+        {'type': 'bus', 'name': 'Luxury Coach', 'base_price': 50, 'duration_range': (240, 720)},
         {'type': 'bus', 'name': 'Standard Bus', 'base_price': 25, 'duration_range': (300, 840)},
-        {'type': 'car_rental', 'name': 'Economy Car Rental', 'base_price': 35, 'duration_range': (0, 0)},
-        {'type': 'car_rental', 'name': 'SUV Rental', 'base_price': 70, 'duration_range': (0, 0)},
-        {'type': 'taxi', 'name': 'Airport Transfer', 'base_price': 45, 'duration_range': (30, 90)},
     ]
     
-    PROVIDERS = ['TransGlobal', 'EasyTravel', 'QuickMove', 'CityLink', 'ExpressWay', 'SkyWings', 'RailConnect']
+    # Local transport: Getting around AT the destination
+    LOCAL_TRANSPORT = [
+        {'type': 'car_rental', 'name': 'Economy Car Rental', 'base_price': 35, 'per_day': True},
+        {'type': 'car_rental', 'name': 'SUV Rental', 'base_price': 70, 'per_day': True},
+        {'type': 'car_rental', 'name': 'Luxury Car Rental', 'base_price': 120, 'per_day': True},
+        {'type': 'taxi', 'name': 'Airport Transfer', 'base_price': 45, 'per_day': False},
+        {'type': 'taxi', 'name': 'Private Driver (Full Day)', 'base_price': 150, 'per_day': True},
+        {'type': 'metro', 'name': 'Metro Day Pass', 'base_price': 10, 'per_day': True},
+        {'type': 'metro', 'name': 'Weekly Transit Pass', 'base_price': 35, 'per_day': False},
+        {'type': 'shuttle', 'name': 'Hotel Shuttle Service', 'base_price': 0, 'per_day': False},
+        {'type': 'bike', 'name': 'Bike Rental', 'base_price': 15, 'per_day': True},
+        {'type': 'scooter', 'name': 'Scooter Rental', 'base_price': 25, 'per_day': True},
+    ]
     
-    def get_transport_options(self, origin: str, destination: str, num_results: int = 8) -> List[Dict]:
-        """Generate mock transport options from origin to destination"""
+    INTERCITY_PROVIDERS = ['SkyWings', 'AirConnect', 'GlobalAir', 'JetBlue', 'AirExpress', 'FlyDirect']
+    GROUND_PROVIDERS = ['EuroRail', 'SpeedTrain', 'ExpressBus', 'TransGlobal', 'RailConnect', 'CoachLine']
+    LOCAL_PROVIDERS = ['CityRentals', 'LocalMove', 'EasyRide', 'QuickTransit', 'UrbanGo', 'MetroPass']
+    
+    # Flight-only templates (primary transport)
+    FLIGHT_OPTIONS = [
+        {'type': 'flight', 'name': 'Economy Flight', 'base_price': 200, 'duration_range': (60, 180)},
+        {'type': 'flight', 'name': 'Economy Plus Flight', 'base_price': 280, 'duration_range': (60, 180)},
+        {'type': 'flight', 'name': 'Premium Economy Flight', 'base_price': 350, 'duration_range': (60, 180)},
+        {'type': 'flight', 'name': 'Business Class Flight', 'base_price': 500, 'duration_range': (60, 180)},
+        {'type': 'flight', 'name': 'First Class Flight', 'base_price': 800, 'duration_range': (60, 180)},
+    ]
+    
+    # Ground transport alternatives (only if no flights)
+    GROUND_TRANSPORT = [
+        {'type': 'train', 'name': 'High-Speed Train', 'base_price': 80, 'duration_range': (120, 360)},
+        {'type': 'train', 'name': 'Standard Train', 'base_price': 40, 'duration_range': (180, 480)},
+        {'type': 'bus', 'name': 'Luxury Coach', 'base_price': 50, 'duration_range': (240, 720)},
+        {'type': 'bus', 'name': 'Standard Bus', 'base_price': 25, 'duration_range': (300, 840)},
+    ]
+    
+    def get_transport_options(self, origin: str, destination: str, num_results: int = 8, flights_only: bool = True) -> List[Dict]:
+        """
+        Generate mock inter-city transport options from origin to destination.
+        
+        Args:
+            origin: Origin city
+            destination: Destination city
+            num_results: Max number of results
+            flights_only: If True, only return flights. If False, include ground transport.
+        """
         options = []
         origin_display = origin if origin else "Your City"
         
-        for i, template in enumerate(random.sample(self.TRANSPORT_TYPES, min(num_results, len(self.TRANSPORT_TYPES)))):
+        # Primary: Generate flight options
+        flight_templates = self.FLIGHT_OPTIONS.copy()
+        random.shuffle(flight_templates)
+        
+        for i, template in enumerate(flight_templates[:num_results]):
             price_variance = random.uniform(0.7, 1.4)
             price = round(template['base_price'] * price_variance, 2)
             
-            duration = None
-            if template['duration_range'][0] > 0:
-                duration = random.randint(template['duration_range'][0], template['duration_range'][1])
+            duration = random.randint(template['duration_range'][0], template['duration_range'][1])
             
             # Generate departure and arrival times
             departure_hour = random.randint(6, 20)
@@ -167,8 +206,9 @@ class MockTransportService:
             options.append({
                 'id': i + 1,
                 'type': template['type'],
+                'category': 'intercity',  # Mark as inter-city transport
                 'name': template['name'],
-                'provider': random.choice(self.PROVIDERS),
+                'provider': random.choice(self.INTERCITY_PROVIDERS),
                 'price_per_person': price,
                 'currency': 'USD',
                 'duration_minutes': duration,
@@ -179,6 +219,42 @@ class MockTransportService:
             })
         
         return sorted(options, key=lambda x: x['price_per_person'])
+    
+    def get_local_transport(self, destination: str, num_days: int = 1, num_results: int = 6) -> List[Dict]:
+        """Generate mock local transport options at the destination"""
+        options = []
+        
+        for i, template in enumerate(random.sample(self.LOCAL_TRANSPORT, min(num_results, len(self.LOCAL_TRANSPORT)))):
+            price_variance = random.uniform(0.8, 1.2)
+            base_price = round(template['base_price'] * price_variance, 2)
+            
+            # Calculate total price based on whether it's per-day pricing
+            if template['per_day']:
+                total_price = base_price * num_days
+                price_note = f"${base_price}/day × {num_days} days"
+            else:
+                total_price = base_price
+                price_note = "One-time fee"
+            
+            options.append({
+                'id': 100 + i,  # Offset ID to avoid conflicts
+                'type': template['type'],
+                'category': 'local',  # Mark as local transport
+                'name': template['name'],
+                'provider': random.choice(self.LOCAL_PROVIDERS),
+                'price_per_person': base_price,
+                'total_price': total_price,
+                'price_note': price_note,
+                'per_day': template['per_day'],
+                'currency': 'USD',
+                'duration_minutes': None,
+                'origin': destination,
+                'destination': destination,
+                'departure_time': None,
+                'description': f"{template['name']} in {destination}"
+            })
+        
+        return sorted(options, key=lambda x: x['total_price'])
 
 
 class TravelRecommendationService:
@@ -218,11 +294,15 @@ class TravelRecommendationService:
         check_out: str,
         people: int = 1,
         rooms: int = 1,
-        origin: str = ''
+        origin: str = '',
+        budget: int = None
     ) -> Dict[str, Any]:
         """
         Get comprehensive travel recommendations for a destination.
         Uses configured API mode to fetch data.
+        
+        Args:
+            budget: Maximum total budget in USD. If provided, filters results.
         """
         from datetime import datetime
         
@@ -237,18 +317,35 @@ class TravelRecommendationService:
         # Get hotels based on API mode
         hotels = self._get_hotels(destination, check_in, check_out, people, rooms)
         
-        # Get transport based on API mode
+        # Get inter-city transport (flights, trains, buses) based on API mode
         transports = self._get_transports(origin, destination, check_in, check_out, people)
+        
+        # Get local transport options (car rental, taxi, metro) at destination
+        local_transports = self.transport_service.get_local_transport(destination, num_days=nights)
         
         # Generate mock attractions
         attractions = self._generate_mock_attractions(destination)
         
+        # Apply budget filter if specified
+        if budget and budget > 0:
+            # Filter hotels: total cost (per night * nights * rooms) must be within budget portion
+            hotel_budget = budget * 0.5  # Allocate 50% of budget to hotels
+            transport_budget = budget * 0.3  # Allocate 30% to transport
+            
+            hotels = [h for h in hotels if h['price_per_night'] * nights * rooms <= hotel_budget]
+            transports = [t for t in transports if t['price_per_person'] * people <= transport_budget]
+            # Filter local transport too
+            local_transport_budget = budget * 0.1  # 10% for local transport
+            local_transports = [lt for lt in local_transports if lt.get('total_price', 0) <= local_transport_budget]
+        
         # Calculate price summary
         cheapest_hotel = hotels[0] if hotels else None
         cheapest_transport = transports[0] if transports else None
+        cheapest_local = local_transports[0] if local_transports else None
         
         hotel_total = cheapest_hotel['price_per_night'] * nights * rooms if cheapest_hotel else 0
         transport_total = cheapest_transport['price_per_person'] * people if cheapest_transport else 0
+        local_transport_total = cheapest_local.get('total_price', 0) if cheapest_local else 0
         attractions_total = sum(a['price_per_person'] for a in attractions[:5]) * people
         
         summary = {
@@ -265,27 +362,32 @@ class TravelRecommendationService:
                 'check_out': check_out,
                 'nights': nights,
                 'people': people,
-                'rooms': rooms
+                'rooms': rooms,
+                'budget': budget
             },
             'price_breakdown': {
                 'hotel_min': hotel_total,
                 'transport_min': transport_total,
+                'local_transport_min': local_transport_total,
                 'attractions_estimated': attractions_total,
-                'total_min': round(hotel_total + transport_total + attractions_total, 2),
+                'total_min': round(hotel_total + transport_total + local_transport_total + attractions_total, 2),
                 'currency': 'USD'
             },
             'options_count': {
                 'hotels': len(hotels),
                 'transports': len(transports),
+                'local_transports': len(local_transports),
                 'attractions': len(attractions)
             },
-            'data_source': self.api_mode  # Tell frontend which data source was used
+            'data_source': self.api_mode,  # Tell frontend which data source was used
+            'budget_applied': budget is not None and budget > 0
         }
         
         return {
             'summary': summary,
             'hotels': hotels,
-            'transports': transports,
+            'transports': transports,  # Inter-city transport (flights, trains, buses)
+            'local_transports': local_transports,  # Local transport (car rental, taxi, metro)
             'attractions': attractions
         }
     

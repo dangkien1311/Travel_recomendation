@@ -35,10 +35,7 @@ class AmadeusService:
     AUTH_URL = "https://test.api.amadeus.com/v1/security/oauth2/token"
     BASE_URL = "https://test.api.amadeus.com"
     
-    # For production, use:
-    # AUTH_URL = "https://api.amadeus.com/v1/security/oauth2/token"
-    # BASE_URL = "https://api.amadeus.com"
-    
+  
     def __init__(self):
         self.api_key = os.getenv('AMADEUS_API_KEY', '')
         self.api_secret = os.getenv('AMADEUS_API_SECRET', '')

@@ -1,5 +1,5 @@
 import { Link } from 'react-router-dom';
-import { Plane, User } from 'lucide-react';
+import { Plane } from 'lucide-react';
 
 function Header() {
   return (
@@ -11,7 +11,7 @@ function Header() {
             <span className="text-2xl font-bold">TravelBook</span>
           </Link>
           
-          <nav className="hidden md:flex items-center gap-6">
+          <nav className="flex items-center gap-6">
             <Link to="/" className="hover:text-accent-500 transition-colors">
               Hotels
             </Link>
@@ -22,16 +22,6 @@ function Header() {
               Attractions
             </Link>
           </nav>
-          
-          <div className="flex items-center gap-4">
-            <button className="flex items-center gap-2 px-4 py-2 rounded-md hover:bg-primary-600 transition-colors">
-              <User className="w-5 h-5" />
-              <span className="hidden md:inline">Sign In</span>
-            </button>
-            <button className="bg-white text-primary-500 px-4 py-2 rounded-md font-semibold hover:bg-gray-100 transition-colors">
-              Register
-            </button>
-          </div>
         </div>
       </div>
     </header>

@@ -164,7 +164,8 @@ class TravelSearchView(APIView):
             check_in=str(data['check_in']),
             check_out=str(data['check_out']),
             people=data['people'],
-            rooms=data['rooms']
+            rooms=data['rooms'],
+            budget=data.get('budget')
         )
         
         return Response(recommendations, status=status.HTTP_200_OK)
@@ -244,3 +245,87 @@ def api_status(request):
         status_info['amadeus']['message'] = 'API keys not set. Add AMADEUS_API_KEY and AMADEUS_API_SECRET to .env'
     
     return Response(status_info)
+
+
+class AITravelPlannerView(APIView):
+    """
+    Smart travel planning endpoint using template-based generation.
+    POST /api/ai-planner/
+    """
+    
+    def get(self, request):
+        """Get conversation questions for advanced search"""
+        from .ai_planner_service import TravelPlannerService
+        
+        planner = TravelPlannerService()
+        return Response({
+            'questions': planner.get_conversation_questions(),
+            'travel_types': planner.get_available_travel_types()
+        })
+    
+    def post(self, request):
+        """Generate smart travel plan"""
+        from .ai_planner_service import TravelPlannerService
+        
+        data = request.data
+        
+        # Validate required fields
+        required_fields = ['origin', 'destination', 'travel_type', 'budget', 'num_days', 'num_people']
+        for field in required_fields:
+            if field not in data:
+                return Response(
+                    {'error': f'Missing required field: {field}'},
+                    status=status.HTTP_400_BAD_REQUEST
+                )
+        
+        # Get travel recommendations first (hotels, transport, attractions)
+        service = TravelRecommendationService()
+        
+        # Calculate dates (use tomorrow as check_in for AI planning)
+        from datetime import datetime, timedelta
+        check_in = (datetime.now() + timedelta(days=1)).strftime('%Y-%m-%d')
+        check_out = (datetime.now() + timedelta(days=1 + int(data['num_days']))).strftime('%Y-%m-%d')
+        
+        recommendations = service.get_recommendations(
+            origin=data.get('origin', ''),
+            destination=data['destination'],
+            check_in=check_in,
+            check_out=check_out,
+            people=int(data['num_people']),
+            rooms=max(1, int(data['num_people']) // 2),
+            budget=int(data.get('budget', 0))
+        )
+        
+        # Generate smart travel plan
+        planner = TravelPlannerService()
+        
+        plan = planner.generate_travel_plan(
+            origin=data['origin'],
+            destination=data['destination'],
+            travel_type=data['travel_type'],
+            budget=int(data['budget']),
+            num_days=int(data['num_days']),
+            num_people=int(data['num_people']),
+            hotels=recommendations.get('hotels', []),
+            transports=recommendations.get('transports', []),
+            attractions=recommendations.get('attractions', [])
+        )
+        
+        # Combine with recommendations
+        plan['recommendations'] = recommendations
+        
+        return Response(plan, status=status.HTTP_200_OK)
+
+
+@api_view(['GET'])
+def ai_planner_status(request):
+    """Check travel planner status"""
+    from .ai_planner_service import TravelPlannerService
+    
+    planner = TravelPlannerService()
+    
+    return Response({
+        'success': True,
+        'message': 'Travel planner is ready',
+        'travel_types': planner.get_available_travel_types()
+    })

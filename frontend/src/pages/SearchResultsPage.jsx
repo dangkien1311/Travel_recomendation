@@ -1,9 +1,10 @@
 import { useState, useEffect } from 'react';
 import { useSearchParams } from 'react-router-dom';
-import { Hotel, Plane, Camera, AlertCircle } from 'lucide-react';
+import { Hotel, Plane, Car, Camera, AlertCircle } from 'lucide-react';
 import SearchForm from '../components/SearchForm';
 import HotelCard from '../components/HotelCard';
 import TransportCard from '../components/TransportCard';
+import LocalTransportCard from '../components/LocalTransportCard';
 import AttractionCard from '../components/AttractionCard';
 import PriceSummary from '../components/PriceSummary';
 import LoadingSpinner from '../components/LoadingSpinner';
@@ -17,6 +18,7 @@ function SearchResultsPage() {
   const [activeTab, setActiveTab] = useState('hotels');
   const [selectedHotel, setSelectedHotel] = useState(null);
   const [selectedTransport, setSelectedTransport] = useState(null);
+  const [selectedLocalTransport, setSelectedLocalTransport] = useState(null);
   const [selectedAttractions, setSelectedAttractions] = useState([]);
 
   const searchData = {
@@ -26,6 +28,7 @@ function SearchResultsPage() {
     checkOut: searchParams.get('checkOut') || '',
     people: parseInt(searchParams.get('people') || '2'),
     rooms: parseInt(searchParams.get('rooms') || '1'),
+    budget: searchParams.get('budget') || '',
   };
 
   useEffect(() => {
@@ -48,6 +51,9 @@ function SearchResultsPage() {
         }
         if (data.transports?.length > 0) {
           setSelectedTransport(data.transports[0]);
+        }
+        if (data.local_transports?.length > 0) {
+          setSelectedLocalTransport(data.local_transports[0]);
         }
       } catch (err) {
         console.error('Search error:', err);
@@ -74,7 +80,8 @@ function SearchResultsPage() {
 
   const tabs = [
     { id: 'hotels', label: 'Hotels', icon: Hotel, count: results?.hotels?.length || 0 },
-    { id: 'transport', label: 'Transport', icon: Plane, count: results?.transports?.length || 0 },
+    { id: 'transport', label: 'Getting There', icon: Plane, count: results?.transports?.length || 0 },
+    { id: 'local', label: 'Getting Around', icon: Car, count: results?.local_transports?.length || 0 },
     { id: 'attractions', label: 'Attractions', icon: Camera, count: results?.attractions?.length || 0 },
   ];
 
@@ -163,12 +170,17 @@ function SearchResultsPage() {
                 </div>
               )}
 
-              {/* Transport Tab */}
+              {/* Transport Tab - Getting There (Inter-city) */}
               {activeTab === 'transport' && (
                 <div className="space-y-4">
-                  <h2 className="text-lg font-semibold text-gray-900">
-                    {results.transports?.length || 0} transport options
-                  </h2>
+                  <div>
+                    <h2 className="text-lg font-semibold text-gray-900">
+                      Getting to {results.summary?.destination?.name || searchData.destination}
+                    </h2>
+                    <p className="text-sm text-gray-500">
+                      {results.transports?.length || 0} options from {searchData.origin || 'your city'}
+                    </p>
+                  </div>
                   {results.transports?.map((transport, index) => (
                     <div
                       key={index}
@@ -182,6 +194,36 @@ function SearchResultsPage() {
                       <TransportCard
                         transport={transport}
                         people={searchData.people}
+                      />
+                    </div>
+                  ))}
+                </div>
+              )}
+
+              {/* Local Transport Tab - Getting Around */}
+              {activeTab === 'local' && (
+                <div className="space-y-4">
+                  <div>
+                    <h2 className="text-lg font-semibold text-gray-900">
+                      Getting around in {results.summary?.destination?.name || searchData.destination}
+                    </h2>
+                    <p className="text-sm text-gray-500">
+                      {results.local_transports?.length || 0} local transport options for {nights} days
+                    </p>
+                  </div>
+                  {results.local_transports?.map((transport, index) => (
+                    <div
+                      key={index}
+                      onClick={() => setSelectedLocalTransport(transport)}
+                      className={`cursor-pointer rounded-lg transition-all ${
+                        selectedLocalTransport?.id === transport.id
+                          ? 'ring-2 ring-primary-500'
+                          : ''
+                      }`}
+                    >
+                      <LocalTransportCard
+                        transport={transport}
+                        nights={nights}
                       />
                     </div>
                   ))}
@@ -229,6 +271,7 @@ function SearchResultsPage() {
                 summary={results.summary}
                 selectedHotel={selectedHotel}
                 selectedTransport={selectedTransport}
+                selectedLocalTransport={selectedLocalTransport}
                 selectedAttractions={selectedAttractions}
               />
             </div>

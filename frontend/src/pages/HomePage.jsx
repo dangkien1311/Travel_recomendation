@@ -1,5 +1,8 @@
+import { useState } from 'react';
 import SearchForm from '../components/SearchForm';
-import { MapPin, Star, Plane, Hotel, Camera } from 'lucide-react';
+import AdvancedSearchModal from '../components/AdvancedSearchModal';
+import TravelPlanModal from '../components/TravelPlanModal';
+import { MapPin, Star, Plane, Hotel, Camera, Sparkles } from 'lucide-react';
 
 const popularDestinations = [
   { name: 'Paris', country: 'France', image: 'https://picsum.photos/seed/paris/400/300', rating: 9.2 },
@@ -29,6 +32,16 @@ const features = [
 ];
 
 function HomePage() {
+  const [showAdvancedSearch, setShowAdvancedSearch] = useState(false);
+  const [showTravelPlan, setShowTravelPlan] = useState(false);
+  const [travelPlan, setTravelPlan] = useState(null);
+
+  const handlePlanGenerated = (plan) => {
+    setTravelPlan(plan);
+    setShowAdvancedSearch(false);
+    setShowTravelPlan(true);
+  };
+
   return (
     <div>
       {/* Hero Section */}
@@ -45,6 +58,21 @@ function HomePage() {
           
           <div className="max-w-5xl mx-auto">
             <SearchForm />
+          </div>
+
+          {/* AI Advanced Search Button */}
+          <div className="text-center mt-8">
+            <button
+              onClick={() => setShowAdvancedSearch(true)}
+              className="inline-flex items-center gap-2 bg-gradient-to-r from-purple-600 to-pink-600 hover:from-purple-700 hover:to-pink-700 text-white px-8 py-4 rounded-xl font-bold text-lg shadow-lg hover:shadow-xl transition-all duration-300 transform hover:scale-105"
+            >
+              <Sparkles className="w-6 h-6" />
+              AI Advanced Search
+              <span className="text-xs bg-white/20 px-2 py-1 rounded-full ml-2">Powered by AI</span>
+            </button>
+            <p className="text-gray-200 mt-3 text-sm">
+              Let our AI plan your perfect trip based on your preferences
+            </p>
           </div>
         </div>
       </section>
@@ -115,12 +143,33 @@ function HomePage() {
           </p>
           <a
             href="#top"
-            className="inline-block bg-accent-500 text-gray-900 px-8 py-3 rounded-lg font-bold hover:bg-accent-600 transition-colors"
+            className="inline-block bg-accent-500 text-gray-900 px-8 py-3 rounded-lg font-bold hover:bg-accent-600 transition-colors mr-4"
           >
             Search Now
           </a>
+          <button
+            onClick={() => setShowAdvancedSearch(true)}
+            className="inline-flex items-center gap-2 bg-white text-primary-500 px-8 py-3 rounded-lg font-bold hover:bg-gray-100 transition-colors"
+          >
+            <Sparkles className="w-5 h-5" />
+            Try AI Planner
+          </button>
         </div>
       </section>
+
+      {/* Advanced Search Modal */}
+      <AdvancedSearchModal
+        isOpen={showAdvancedSearch}
+        onClose={() => setShowAdvancedSearch(false)}
+        onPlanGenerated={handlePlanGenerated}
+      />
+
+      {/* Travel Plan Modal */}
+      <TravelPlanModal
+        isOpen={showTravelPlan}
+        onClose={() => setShowTravelPlan(false)}
+        plan={travelPlan}
+      />
     </div>
   );
 }

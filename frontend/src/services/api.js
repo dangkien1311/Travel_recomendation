@@ -20,6 +20,7 @@ export const searchTravel = async (searchData) => {
       check_out: searchData.checkOut,
       people: parseInt(searchData.people) || 1,
       rooms: parseInt(searchData.rooms) || 1,
+      budget: searchData.budget ? parseInt(searchData.budget) : null,
     });
     console.log('Search response:', response.data);
     return response.data;
@@ -72,6 +73,29 @@ export const getFeaturedPackages = async () => {
 // Health check
 export const healthCheck = async () => {
   const response = await api.get('/health/');
+  return response.data;
+};
+
+// AI Travel Planner
+export const getAIPlannerQuestions = async () => {
+  const response = await api.get('/ai-planner/');
+  return response.data;
+};
+
+export const generateAITravelPlan = async (planData) => {
+  try {
+    console.log('Generating AI travel plan:', planData);
+    const response = await api.post('/ai-planner/', planData);
+    console.log('AI plan response:', response.data);
+    return response.data;
+  } catch (error) {
+    console.error('AI Planner error:', error.response?.data || error.message);
+    throw error;
+  }
+};
+
+export const checkAIPlannerStatus = async () => {
+  const response = await api.get('/ai-planner/status/');
   return response.data;
 };
 

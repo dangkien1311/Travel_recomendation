@@ -1,6 +1,6 @@
-import { DollarSign, Hotel, Plane, Camera, Calculator, ArrowRight } from 'lucide-react';
+import { DollarSign, Hotel, Plane, Car, Camera, Calculator, ArrowRight } from 'lucide-react';
 
-function PriceSummary({ summary, selectedHotel, selectedTransport, selectedAttractions = [] }) {
+function PriceSummary({ summary, selectedHotel, selectedTransport, selectedLocalTransport, selectedAttractions = [] }) {
   const { trip_details, price_breakdown } = summary;
   
   // Calculate actual selected prices
@@ -12,11 +12,15 @@ function PriceSummary({ summary, selectedHotel, selectedTransport, selectedAttra
     ? selectedTransport.price_per_person * trip_details.people 
     : price_breakdown.transport_min;
   
+  const localTransportTotal = selectedLocalTransport 
+    ? (selectedLocalTransport.total_price || selectedLocalTransport.price_per_person * trip_details.nights)
+    : (price_breakdown.local_transport_min || 0);
+  
   const attractionsTotal = selectedAttractions.length > 0
     ? selectedAttractions.reduce((sum, a) => sum + (a.price_per_person * trip_details.people), 0)
     : price_breakdown.attractions_estimated;
   
-  const grandTotal = hotelTotal + transportTotal + attractionsTotal;
+  const grandTotal = hotelTotal + transportTotal + localTransportTotal + attractionsTotal;
 
   return (
     <div className="bg-white rounded-lg shadow-md p-6 sticky top-4">
@@ -65,9 +69,17 @@ function PriceSummary({ summary, selectedHotel, selectedTransport, selectedAttra
         <div className="flex items-center justify-between text-sm">
           <div className="flex items-center gap-2">
             <Plane className="w-4 h-4 text-primary-500" />
-            <span>Transport</span>
+            <span>Getting There</span>
           </div>
           <span className="font-medium">${transportTotal.toFixed(2)}</span>
+        </div>
+        
+        <div className="flex items-center justify-between text-sm">
+          <div className="flex items-center gap-2">
+            <Car className="w-4 h-4 text-primary-500" />
+            <span>Getting Around</span>
+          </div>
+          <span className="font-medium">${localTransportTotal.toFixed(2)}</span>
         </div>
         
         <div className="flex items-center justify-between text-sm">
@@ -95,12 +107,6 @@ function PriceSummary({ summary, selectedHotel, selectedTransport, selectedAttra
           *Prices shown are estimates. Final prices may vary.
         </p>
       </div>
-
-      {/* Book Button */}
-      <button className="w-full mt-4 bg-accent-500 text-gray-900 py-3 rounded-lg font-bold hover:bg-accent-600 transition-colors flex items-center justify-center gap-2">
-        <DollarSign className="w-5 h-5" />
-        Book Now
-      </button>
     </div>
   );
 }

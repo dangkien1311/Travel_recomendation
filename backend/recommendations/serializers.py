@@ -104,6 +104,7 @@ class TravelSearchSerializer(serializers.Serializer):
     check_out = serializers.DateField()
     people = serializers.IntegerField(min_value=1, max_value=20, default=1)
     rooms = serializers.IntegerField(min_value=1, max_value=10, default=1)
+    budget = serializers.IntegerField(min_value=0, required=False, allow_null=True, default=None)
     
     def validate(self, data):
         if data['check_out'] <= data['check_in']:
