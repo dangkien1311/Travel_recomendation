@@ -96,23 +96,25 @@ function AITripRecommendation({ searchData, results }) {
 
   if (!searchData.destination) return null;
 
-  // Show button when not open
+  // Show button when not open - styled as a card to match PriceSummary
   if (!isOpen) {
     return (
-      <button
-        onClick={handleButtonClick}
-        className="w-full bg-gradient-to-r from-primary-500 to-primary-600 hover:from-primary-600 hover:to-primary-700 text-white rounded-xl shadow-lg p-5 flex items-center justify-center gap-4 transition-all transform hover:scale-[1.02]"
-      >
-        <div className="p-3 bg-white/20 rounded-xl">
-          <Sparkles className="w-8 h-8" />
-        </div>
-        <div className="text-left">
-          <p className="font-bold text-xl">Generate AI Trip Plan</p>
-          <p className="text-primary-100 text-base">
-            Click to get a smart itinerary for your {searchData.destination} trip
-          </p>
-        </div>
-      </button>
+      <div className="bg-white rounded-lg shadow-md p-6">
+        <h2 className="text-xl font-bold text-gray-900 mb-4 flex items-center gap-2">
+          <Sparkles className="w-5 h-5 text-primary-500" />
+          AI Trip Planner
+        </h2>
+        <p className="text-gray-600 text-sm mb-4">
+          Get a personalized itinerary with recommended activities, timing, and tips for your {searchData.destination} trip.
+        </p>
+        <button
+          onClick={handleButtonClick}
+          className="w-full bg-gradient-to-r from-primary-500 to-primary-600 hover:from-primary-600 hover:to-primary-700 text-white rounded-lg py-3 px-4 font-semibold flex items-center justify-center gap-2 transition-all"
+        >
+          <Sparkles className="w-5 h-5" />
+          Generate AI Trip Plan
+        </button>
+      </div>
     );
   }
 

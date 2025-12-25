@@ -23,7 +23,7 @@ function PriceSummary({ summary, selectedHotel, selectedTransport, selectedLocal
   const grandTotal = hotelTotal + transportTotal + localTransportTotal + attractionsTotal;
 
   return (
-    <div className="bg-white rounded-lg shadow-md p-6 sticky top-4">
+    <div className="bg-white rounded-lg shadow-md p-6">
       <h2 className="text-xl font-bold text-gray-900 mb-4 flex items-center gap-2">
         <Calculator className="w-5 h-5" />
         Trip Summary

@@ -267,7 +267,7 @@ function SearchResultsPage() {
             </div>
 
             {/* Sidebar - Price Summary & AI Trip */}
-            <div className="lg:w-80 space-y-4">
+            <div className="lg:w-80 space-y-4 lg:sticky lg:top-4 lg:self-start">
               <PriceSummary
                 summary={results.summary}
                 selectedHotel={selectedHotel}
