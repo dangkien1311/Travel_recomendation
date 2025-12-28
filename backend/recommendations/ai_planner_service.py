@@ -282,10 +282,15 @@ class TravelPlannerService:
             recommended_transport = transports[0]
             transport_cost = recommended_transport.get('price_per_person', 0) * num_people
         
-        # Calculate actual attraction costs (sum of real attraction fees)
-        if attractions:
-            for attr in attractions[:5]:
-                attraction_cost_actual += attr.get('price_per_person', 0) * num_people
+        # Calculate actual attraction costs from the generated itinerary
+        # Sum up all activity costs from each day (these are per-person costs)
+        itinerary_per_person_cost = 0
+        for day in itinerary:
+            for activity in day.get('activities', []):
+                itinerary_per_person_cost += activity.get('estimated_cost', 0)
+        
+        # Multiply by num_people to get total activities cost
+        attraction_cost_actual = itinerary_per_person_cost * num_people
         
         # Calculate attraction budget (remaining from user's budget)
         if user_set_budget:
@@ -372,6 +377,7 @@ class TravelPlannerService:
                     'transport': transport_cost,
                     'activities_budget': attraction_budget,
                     'activities_actual': attraction_cost_actual,
+                    'activities_per_person': itinerary_per_person_cost,
                     'estimated_total': total_estimated,
                     'remaining_budget': budget - total_estimated
                 },

@@ -356,10 +356,12 @@ function AITripRecommendation({ searchData, results }) {
                     <div className="text-center p-4 bg-white rounded-xl">
                       <p className="text-gray-500 mb-1">Hotel</p>
                       <p className="font-bold text-2xl text-gray-900">${tripPlan.cost_breakdown.hotel?.toLocaleString() || 0}</p>
+                      <p className="text-xs text-gray-400 mt-1">{tripPlan.num_days} nights</p>
                     </div>
                     <div className="text-center p-4 bg-white rounded-xl">
                       <p className="text-gray-500 mb-1">Transport</p>
                       <p className="font-bold text-2xl text-gray-900">${tripPlan.cost_breakdown.transport?.toLocaleString() || 0}</p>
+                      <p className="text-xs text-gray-400 mt-1">{tripPlan.num_people} people</p>
                     </div>
                     <div className="text-center p-4 bg-blue-50 rounded-xl border border-blue-200">
                       <p className="text-blue-600 mb-1">Activities Budget</p>
@@ -369,12 +371,14 @@ function AITripRecommendation({ searchData, results }) {
                     <div className="text-center p-4 bg-green-50 rounded-xl border border-green-200">
                       <p className="text-green-600 mb-1">Activities Actual</p>
                       <p className="font-bold text-2xl text-green-700">${tripPlan.cost_breakdown.activities_actual?.toLocaleString() || 0}</p>
-                      <p className="text-xs text-green-500 mt-1">Real attraction fees</p>
+                      <p className="text-xs text-green-500 mt-1">
+                        ${tripPlan.cost_breakdown.activities_per_person || 0}/person × {tripPlan.num_people}
+                      </p>
                     </div>
                   </div>
                   <div className="mt-4 pt-4 border-t-2 border-gray-200 flex justify-between items-center">
                     <span className="font-bold text-xl">Total Estimated</span>
-                    <span className="font-bold text-3xl text-primary-600">
+                    <span className={`font-bold text-3xl ${tripPlan.budget_exceeded ? 'text-red-600' : 'text-primary-600'}`}>
                       ${tripPlan.cost_breakdown.estimated_total?.toLocaleString() || 0}
                     </span>
                   </div>

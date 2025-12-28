@@ -287,26 +287,30 @@ function TravelPlanModal({ isOpen, onClose, plan }) {
                     <p className="font-bold text-lg text-gray-900">
                       ${planData.cost_breakdown.hotel?.toLocaleString() || 0}
                     </p>
+                    <p className="text-xs text-gray-400">{planData.num_days} nights</p>
                   </div>
                   <div className="bg-white rounded-lg p-3 text-center shadow-sm">
                     <p className="text-xs text-gray-500 mb-1">Transport</p>
                     <p className="font-bold text-lg text-gray-900">
                       ${planData.cost_breakdown.transport?.toLocaleString() || 0}
                     </p>
+                    <p className="text-xs text-gray-400">{planData.num_people} people</p>
                   </div>
                   <div className="bg-blue-50 rounded-lg p-3 text-center shadow-sm border border-blue-200">
                     <p className="text-xs text-blue-600 mb-1">Activities Budget</p>
                     <p className="font-bold text-lg text-blue-700">
                       ${planData.cost_breakdown.activities_budget?.toLocaleString() || 0}
                     </p>
-                    <p className="text-xs text-blue-500">Remaining</p>
+                    <p className="text-xs text-blue-500">Remaining from budget</p>
                   </div>
                   <div className="bg-green-50 rounded-lg p-3 text-center shadow-sm border border-green-200">
                     <p className="text-xs text-green-600 mb-1">Activities Actual</p>
                     <p className="font-bold text-lg text-green-700">
                       ${planData.cost_breakdown.activities_actual?.toLocaleString() || 0}
                     </p>
-                    <p className="text-xs text-green-500">Real fees</p>
+                    <p className="text-xs text-green-500">
+                      ${planData.cost_breakdown.activities_per_person || 0}/person × {planData.num_people}
+                    </p>
                   </div>
                 </div>
                 <div className="border-t border-gray-200 pt-3 flex justify-between items-center">
