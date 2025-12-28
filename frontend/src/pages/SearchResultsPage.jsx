@@ -274,6 +274,7 @@ function SearchResultsPage() {
                 selectedTransport={selectedTransport}
                 selectedLocalTransport={selectedLocalTransport}
                 selectedAttractions={selectedAttractions}
+                userBudget={searchData.budget ? parseInt(searchData.budget) : 0}
               />
               
               {/* AI Trip Plan Button - Under Price Summary */}

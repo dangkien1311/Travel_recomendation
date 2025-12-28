@@ -1,5 +1,5 @@
 import { useState } from 'react';
-import { Sparkles, ChevronDown, ChevronUp, MapPin, Calendar, Users, DollarSign, Clock, Loader2, RefreshCw, X } from 'lucide-react';
+import { Sparkles, ChevronDown, ChevronUp, MapPin, Calendar, Users, DollarSign, Clock, Loader2, RefreshCw, X, Hotel, Plane } from 'lucide-react';
 import { generateAITravelPlan } from '../services/api';
 
 function AITripRecommendation({ searchData, results }) {
@@ -57,6 +57,10 @@ function AITripRecommendation({ searchData, results }) {
     setError(null);
     
     try {
+      // Check if user explicitly set a budget
+      const userSetBudget = searchData.budget && parseInt(searchData.budget) > 0;
+      const budget = userSetBudget ? parseInt(searchData.budget) : estimateBudget();
+      
       const planData = {
         origin: searchData.origin || 'Your City',
         destination: searchData.destination,
@@ -64,7 +68,8 @@ function AITripRecommendation({ searchData, results }) {
         hotel_preference: 'mid-range',
         num_days: calculateDays(),
         num_people: searchData.people || 2,
-        budget: estimateBudget(),
+        budget: budget,
+        user_set_budget: userSetBudget, // Flag to indicate if user explicitly set budget
       };
       
       console.log('Generating AI trip plan:', planData);
@@ -167,6 +172,39 @@ function AITripRecommendation({ searchData, results }) {
 
           {tripPlan && !isLoading && (
             <div className="space-y-6">
+              {/* Budget Warning */}
+              {tripPlan.budget_exceeded && tripPlan.budget_warning && (
+                <div className="bg-red-50 border-2 border-red-200 rounded-xl p-5">
+                  <div className="flex items-start gap-3">
+                    <div className="p-2 bg-red-100 rounded-lg">
+                      <DollarSign className="w-6 h-6 text-red-600" />
+                    </div>
+                    <div className="flex-1">
+                      <h3 className="font-bold text-lg text-red-800 mb-1">
+                        ⚠️ Budget Exceeded
+                      </h3>
+                      <p className="text-red-700 mb-2">
+                        {tripPlan.budget_warning.message}
+                      </p>
+                      <p className="text-red-600 text-sm mb-3">
+                        {tripPlan.budget_warning.suggestion}
+                      </p>
+                      <div className="flex flex-wrap gap-3 text-sm">
+                        <span className="px-3 py-1 bg-red-100 text-red-700 rounded-lg">
+                          Your Budget: <strong>${tripPlan.budget?.toLocaleString()}</strong>
+                        </span>
+                        <span className="px-3 py-1 bg-red-100 text-red-700 rounded-lg">
+                          Trip Cost: <strong>${tripPlan.budget_warning.required_budget?.toLocaleString()}</strong>
+                        </span>
+                        <span className="px-3 py-1 bg-red-200 text-red-800 rounded-lg font-semibold">
+                          Over by: ${tripPlan.budget_warning.over_amount?.toLocaleString()}
+                        </span>
+                      </div>
+                    </div>
+                  </div>
+                </div>
+              )}
+
               {/* Trip Overview */}
               <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
                 <div className="bg-gray-50 rounded-xl p-4 text-center">
@@ -190,6 +228,66 @@ function AITripRecommendation({ searchData, results }) {
                   <p className="font-bold text-lg">${tripPlan.budget?.toLocaleString()}</p>
                 </div>
               </div>
+
+              {/* Accommodation Details */}
+              {tripPlan.accommodation && (
+                <div className="bg-blue-50 rounded-xl p-5 border border-blue-200">
+                  <h3 className="font-bold text-xl text-blue-900 mb-4 flex items-center gap-2">
+                    <Hotel className="w-6 h-6 text-blue-600" />
+                    Your Accommodation
+                  </h3>
+                  <div className="flex flex-col md:flex-row gap-4">
+                    {tripPlan.accommodation.image && (
+                      <div className="md:w-48 h-32 rounded-xl overflow-hidden flex-shrink-0">
+                        <img 
+                          src={tripPlan.accommodation.image} 
+                          alt={tripPlan.accommodation.hotel_name}
+                          className="w-full h-full object-cover"
+                          onError={(e) => e.target.style.display = 'none'}
+                        />
+                      </div>
+                    )}
+                    <div className="flex-1">
+                      <h4 className="font-bold text-lg text-gray-900 mb-2">
+                        {tripPlan.accommodation.hotel_name}
+                      </h4>
+                      <div className="flex items-center gap-2 mb-2">
+                        {tripPlan.accommodation.stars && (
+                          <span className="text-yellow-500">
+                            {'★'.repeat(tripPlan.accommodation.stars)}
+                          </span>
+                        )}
+                        {tripPlan.accommodation.rating > 0 && (
+                          <span className="text-sm bg-blue-600 text-white px-2 py-0.5 rounded">
+                            {tripPlan.accommodation.rating}/10
+                          </span>
+                        )}
+                        <span className="text-sm text-gray-500 capitalize">
+                          {tripPlan.accommodation.hotel_type} hotel
+                        </span>
+                      </div>
+                      <div className="grid grid-cols-2 gap-3 text-sm">
+                        <div className="bg-white rounded-lg p-3">
+                          <p className="text-gray-500">Check-in</p>
+                          <p className="font-semibold text-green-600">{tripPlan.accommodation.check_in_time}</p>
+                        </div>
+                        <div className="bg-white rounded-lg p-3">
+                          <p className="text-gray-500">Check-out</p>
+                          <p className="font-semibold text-red-600">{tripPlan.accommodation.check_out_time}</p>
+                        </div>
+                      </div>
+                      <div className="mt-3 flex justify-between items-center">
+                        <span className="text-gray-600">
+                          ${tripPlan.accommodation.price_per_night}/night × {tripPlan.accommodation.total_nights} nights
+                        </span>
+                        <span className="font-bold text-lg text-blue-700">
+                          ${tripPlan.accommodation.total_cost?.toLocaleString()}
+                        </span>
+                      </div>
+                    </div>
+                  </div>
+                </div>
+              )}
 
               {/* Full Itinerary - Show ALL days */}
               <div>
@@ -217,11 +315,15 @@ function AITripRecommendation({ searchData, results }) {
                               {activity.description && (
                                 <p className="text-gray-500 mt-1">{activity.description}</p>
                               )}
-                              {activity.estimated_cost > 0 && (
-                                <span className="inline-block mt-1 px-2 py-1 bg-primary-100 text-primary-700 rounded-lg text-sm font-medium">
-                                  ~${Math.round(activity.estimated_cost)}
-                                </span>
-                              )}
+                              <span className={`inline-block mt-1 px-2 py-1 rounded-lg text-sm font-medium ${
+                                activity.estimated_cost > 0 
+                                  ? 'bg-primary-100 text-primary-700' 
+                                  : 'bg-green-100 text-green-700'
+                              }`}>
+                                {activity.estimated_cost > 0 
+                                  ? `~$${Math.round(activity.estimated_cost)}` 
+                                  : 'Free'}
+                              </span>
                             </div>
                           </div>
                         ))}
@@ -250,7 +352,7 @@ function AITripRecommendation({ searchData, results }) {
               {tripPlan.cost_breakdown && (
                 <div className="bg-gray-50 rounded-xl p-5">
                   <h3 className="font-bold text-xl text-gray-900 mb-4">Estimated Costs</h3>
-                  <div className="grid grid-cols-3 gap-4">
+                  <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
                     <div className="text-center p-4 bg-white rounded-xl">
                       <p className="text-gray-500 mb-1">Hotel</p>
                       <p className="font-bold text-2xl text-gray-900">${tripPlan.cost_breakdown.hotel?.toLocaleString() || 0}</p>
@@ -259,9 +361,15 @@ function AITripRecommendation({ searchData, results }) {
                       <p className="text-gray-500 mb-1">Transport</p>
                       <p className="font-bold text-2xl text-gray-900">${tripPlan.cost_breakdown.transport?.toLocaleString() || 0}</p>
                     </div>
-                    <div className="text-center p-4 bg-white rounded-xl">
-                      <p className="text-gray-500 mb-1">Activities</p>
-                      <p className="font-bold text-2xl text-gray-900">${tripPlan.cost_breakdown.attractions?.toLocaleString() || 0}</p>
+                    <div className="text-center p-4 bg-blue-50 rounded-xl border border-blue-200">
+                      <p className="text-blue-600 mb-1">Activities Budget</p>
+                      <p className="font-bold text-2xl text-blue-700">${tripPlan.cost_breakdown.activities_budget?.toLocaleString() || 0}</p>
+                      <p className="text-xs text-blue-500 mt-1">Remaining from budget</p>
+                    </div>
+                    <div className="text-center p-4 bg-green-50 rounded-xl border border-green-200">
+                      <p className="text-green-600 mb-1">Activities Actual</p>
+                      <p className="font-bold text-2xl text-green-700">${tripPlan.cost_breakdown.activities_actual?.toLocaleString() || 0}</p>
+                      <p className="text-xs text-green-500 mt-1">Real attraction fees</p>
                     </div>
                   </div>
                   <div className="mt-4 pt-4 border-t-2 border-gray-200 flex justify-between items-center">

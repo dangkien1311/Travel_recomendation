@@ -305,6 +305,9 @@ class AITravelPlannerView(APIView):
             # Generate smart travel plan
             planner = TravelPlannerService()
             
+            # Check if user explicitly set budget
+            user_set_budget = data.get('user_set_budget', False)
+            
             plan = planner.generate_travel_plan(
                 origin=data['origin'],
                 destination=data['destination'],
@@ -315,7 +318,8 @@ class AITravelPlannerView(APIView):
                 num_people=int(data['num_people']),
                 hotels=recommendations.get('hotels', []),
                 transports=recommendations.get('transports', []),
-                attractions=recommendations.get('attractions', [])
+                attractions=recommendations.get('attractions', []),
+                user_set_budget=user_set_budget
             )
             
             # Combine with recommendations

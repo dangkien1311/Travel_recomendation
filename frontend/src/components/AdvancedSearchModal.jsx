@@ -70,7 +70,8 @@ function AdvancedSearchModal({ isOpen, onClose, onPlanGenerated }) {
       const submitData = {
         ...formData,
         travel_type: formData.travel_types.join(',') || 'culture',
-        hotel_preference: formData.hotel_preference || 'mid-range'
+        hotel_preference: formData.hotel_preference || 'mid-range',
+        user_set_budget: true, // User explicitly set budget in advanced planning
       };
       console.log('Submitting travel plan:', submitData);
       const result = await generateAITravelPlan(submitData);

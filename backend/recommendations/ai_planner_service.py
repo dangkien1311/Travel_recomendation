@@ -204,7 +204,8 @@ class TravelPlannerService:
         num_people: int = 2,
         hotels: List[Dict] = None,
         transports: List[Dict] = None,
-        attractions: List[Dict] = None
+        attractions: List[Dict] = None,
+        user_set_budget: bool = False
     ) -> Dict[str, Any]:
         """
         Generate a personalized travel plan using templates and real data.
@@ -220,6 +221,7 @@ class TravelPlannerService:
             hotels: List of available hotels
             transports: List of available transport options
             attractions: List of available attractions
+            user_set_budget: Whether user explicitly set the budget
         
         Returns:
             Complete travel plan with itinerary
@@ -266,7 +268,8 @@ class TravelPlannerService:
         # Calculate costs
         hotel_cost = 0
         transport_cost = 0
-        attraction_cost = 0
+        attraction_cost_actual = 0
+        attraction_budget = 0
         
         recommended_hotel = None
         recommended_transport = None
@@ -279,11 +282,19 @@ class TravelPlannerService:
             recommended_transport = transports[0]
             transport_cost = recommended_transport.get('price_per_person', 0) * num_people
         
+        # Calculate actual attraction costs (sum of real attraction fees)
         if attractions:
             for attr in attractions[:5]:
-                attraction_cost += attr.get('price_per_person', 0) * num_people
+                attraction_cost_actual += attr.get('price_per_person', 0) * num_people
         
-        total_estimated = hotel_cost + transport_cost + attraction_cost
+        # Calculate attraction budget (remaining from user's budget)
+        if user_set_budget:
+            attraction_budget = max(0, budget - hotel_cost - transport_cost)
+        else:
+            attraction_budget = attraction_cost_actual
+        
+        # Use actual costs for total estimation
+        total_estimated = hotel_cost + transport_cost + attraction_cost_actual
         
         # Generate tips
         tips = self._generate_tips(destination, travel_types_list[0] if travel_types_list else 'culture')
@@ -299,8 +310,42 @@ class TravelPlannerService:
                 type_descriptions.append(self.TRAVEL_TYPES[t]['description'])
         combined_description = '; '.join(type_descriptions) if type_descriptions else 'General travel experience'
         
+        # Build hotel accommodation details
+        accommodation = None
+        if recommended_hotel:
+            accommodation = {
+                'hotel_name': recommended_hotel.get('name', 'Recommended Hotel'),
+                'hotel_type': hotel_preference,
+                'price_per_night': recommended_hotel.get('price_per_night', 0),
+                'total_nights': num_days,
+                'total_cost': hotel_cost,
+                'check_in_time': '3:00 PM',
+                'check_out_time': '11:00 AM',
+                'amenities': recommended_hotel.get('amenities', hotel_pref.get('amenities', [])),
+                'rating': recommended_hotel.get('rating', 0),
+                'stars': recommended_hotel.get('stars', recommended_hotel.get('star_rating', 3)),
+                'address': recommended_hotel.get('address', f'{destination} City Center'),
+                'image': recommended_hotel.get('image', recommended_hotel.get('image_url', ''))
+            }
+        
+        # Check if trip exceeds budget
+        budget_warning = None
+        budget_exceeded = False
+        if user_set_budget and total_estimated > budget:
+            budget_exceeded = True
+            over_budget_amount = total_estimated - budget
+            budget_warning = {
+                'type': 'over_budget',
+                'message': f'This trip exceeds your budget of ${budget:,} by ${over_budget_amount:,.2f}',
+                'suggestion': 'Consider adjusting your travel dates, choosing budget-friendly hotels, or increasing your budget.',
+                'over_amount': over_budget_amount,
+                'required_budget': total_estimated
+            }
+        
         return {
             'success': True,
+            'budget_exceeded': budget_exceeded,
+            'budget_warning': budget_warning,
             'plan': {
                 'origin': origin,
                 'destination': destination,
@@ -310,6 +355,8 @@ class TravelPlannerService:
                 'hotel_preference_description': hotel_pref['description'],
                 'travel_type_description': combined_description,
                 'budget': budget,
+                'budget_exceeded': budget_exceeded,
+                'budget_warning': budget_warning,
                 'num_days': num_days,
                 'num_people': num_people,
                 'daily_budget': daily_budget,
@@ -317,12 +364,14 @@ class TravelPlannerService:
                 'itinerary': itinerary,
                 'itinerary_text': self._format_itinerary_text(itinerary, destination, travel_type, budget, num_people, num_days),
                 'recommended_hotel': recommended_hotel,
+                'accommodation': accommodation,
                 'recommended_transport': recommended_transport,
                 'top_attractions': attractions[:5] if attractions else [],
                 'cost_breakdown': {
                     'hotel': hotel_cost,
                     'transport': transport_cost,
-                    'attractions': attraction_cost,
+                    'activities_budget': attraction_budget,
+                    'activities_actual': attraction_cost_actual,
                     'estimated_total': total_estimated,
                     'remaining_budget': budget - total_estimated
                 },
@@ -373,6 +422,13 @@ class TravelPlannerService:
         itinerary = []
         used_attractions = []
         
+        # Calculate actual activity budget from attractions
+        total_attraction_cost = sum(a.get('price_per_person', 0) for a in attractions[:5]) if attractions else 0
+        avg_attraction_cost = total_attraction_cost / 5 if attractions else 15
+        
+        # Get recommended hotel info
+        recommended_hotel = hotels[0] if hotels else None
+        
         for day in range(1, num_days + 1):
             day_plan = {
                 'day': day,
@@ -388,20 +444,33 @@ class TravelPlannerService:
                 'estimated_cost': 0
             }
             
-            if day == 1 and transports:
-                # First day: arrival
-                transport = transports[0]
-                morning['activity'] = f"Arrive via {transport.get('name', 'transport')}"
-                morning['description'] = f"Travel from origin to {destination}. Check into your hotel and freshen up."
-                morning['estimated_cost'] = transport.get('price_per_person', 0)
+            if day == 1:
+                # First day: arrival and hotel check-in
+                if transports:
+                    transport = transports[0]
+                    morning['activity'] = f"Arrive via {transport.get('name', 'transport')}"
+                    if recommended_hotel:
+                        morning['description'] = f"Travel to {destination}. Check into {recommended_hotel.get('name', 'your hotel')} (Check-in: 3:00 PM)"
+                    else:
+                        morning['description'] = f"Travel to {destination}. Check into your hotel and freshen up."
+                    # Don't add transport cost here as it's counted separately in cost_breakdown
+                    morning['estimated_cost'] = 0
+                else:
+                    morning['activity'] = f"Arrive in {destination}"
+                    if recommended_hotel:
+                        morning['description'] = f"Check into {recommended_hotel.get('name', 'your hotel')} (Check-in: 3:00 PM) and settle in"
+                    else:
+                        morning['description'] = f"Check into your hotel and settle in"
+                    morning['estimated_cost'] = 0
             else:
                 morning['activity'] = random.choice(travel_config['morning_activities'])
                 morning['description'] = f"Start your day with this {travel_type} experience"
-                morning['estimated_cost'] = daily_budget * 0.2
+                # Use free activities for morning walks/explorations
+                morning['estimated_cost'] = 0
             
             day_plan['activities'].append(morning)
             
-            # Afternoon activity
+            # Afternoon activity - use real attractions with actual costs
             afternoon = {
                 'time': 'Afternoon (2:00 PM)',
                 'activity': '',
@@ -415,12 +484,13 @@ class TravelPlannerService:
                 attraction = available_attractions[0]
                 used_attractions.append(attraction.get('name'))
                 afternoon['activity'] = f"Visit {attraction.get('name', 'local attraction')}"
-                afternoon['description'] = attraction.get('description', f"A must-see {travel_type} destination")
+                afternoon['description'] = attraction.get('description', f"Visit the famous {attraction.get('name')} in {destination}")
                 afternoon['estimated_cost'] = attraction.get('price_per_person', 0)
             else:
                 afternoon['activity'] = random.choice(travel_config['afternoon_activities'])
                 afternoon['description'] = f"Enjoy {travel_type} activities in {destination}"
-                afternoon['estimated_cost'] = daily_budget * 0.3
+                # Free afternoon activity (walking tour, exploring, etc.)
+                afternoon['estimated_cost'] = 0
             
             day_plan['activities'].append(afternoon)
             
@@ -432,18 +502,23 @@ class TravelPlannerService:
                 'estimated_cost': 0
             }
             
-            if day == num_days and transports:
+            if day == num_days:
+                # Last day: check-out and departure
                 evening['activity'] = "Prepare for departure"
-                evening['description'] = "Pack your bags, enjoy a final dinner, and prepare for your journey home"
-                evening['estimated_cost'] = daily_budget * 0.2
+                if recommended_hotel:
+                    evening['description'] = f"Check out from {recommended_hotel.get('name', 'hotel')} (Check-out: 11:00 AM), enjoy a final dinner, and prepare for your journey home"
+                else:
+                    evening['description'] = "Check out, enjoy a final dinner, and prepare for your journey home"
+                evening['estimated_cost'] = 0
             else:
                 evening['activity'] = random.choice(travel_config['evening_activities'])
                 evening['description'] = f"End your day with a memorable {travel_type} experience"
-                evening['estimated_cost'] = daily_budget * 0.3
+                # Evening activities are typically dining/entertainment, keep as included/free
+                evening['estimated_cost'] = 0
             
             day_plan['activities'].append(evening)
             
-            # Calculate day total
+            # Calculate day total (only paid activities)
             day_plan['day_total'] = sum(a['estimated_cost'] for a in day_plan['activities'])
             
             itinerary.append(day_plan)

@@ -1,6 +1,6 @@
-import { DollarSign, Hotel, Plane, Car, Camera, Calculator, ArrowRight } from 'lucide-react';
+import { DollarSign, Hotel, Plane, Car, Camera, Calculator, ArrowRight, AlertTriangle } from 'lucide-react';
 
-function PriceSummary({ summary, selectedHotel, selectedTransport, selectedLocalTransport, selectedAttractions = [] }) {
+function PriceSummary({ summary, selectedHotel, selectedTransport, selectedLocalTransport, selectedAttractions = [], userBudget = 0 }) {
   const { trip_details, price_breakdown } = summary;
   
   // Calculate actual selected prices
@@ -21,6 +21,10 @@ function PriceSummary({ summary, selectedHotel, selectedTransport, selectedLocal
     : price_breakdown.attractions_estimated;
   
   const grandTotal = hotelTotal + transportTotal + localTransportTotal + attractionsTotal;
+  
+  // Check if budget is exceeded
+  const budgetExceeded = userBudget > 0 && grandTotal > userBudget;
+  const overBudgetAmount = budgetExceeded ? grandTotal - userBudget : 0;
 
   return (
     <div className="bg-white rounded-lg shadow-md p-6">
@@ -28,6 +32,24 @@ function PriceSummary({ summary, selectedHotel, selectedTransport, selectedLocal
         <Calculator className="w-5 h-5" />
         Trip Summary
       </h2>
+
+      {/* Budget Warning */}
+      {budgetExceeded && (
+        <div className="bg-red-50 border border-red-200 rounded-lg p-3 mb-4">
+          <div className="flex items-start gap-2">
+            <AlertTriangle className="w-5 h-5 text-red-500 flex-shrink-0 mt-0.5" />
+            <div>
+              <p className="text-red-700 font-semibold text-sm">Budget Exceeded!</p>
+              <p className="text-red-600 text-xs mt-1">
+                Your budget: <strong>${userBudget.toLocaleString()}</strong>
+              </p>
+              <p className="text-red-600 text-xs">
+                Over by: <strong>${overBudgetAmount.toLocaleString(undefined, {minimumFractionDigits: 2, maximumFractionDigits: 2})}</strong>
+              </p>
+            </div>
+          </div>
+        </div>
+      )}
 
       {/* Route Display */}
       {(trip_details.origin || summary.origin?.name) && (

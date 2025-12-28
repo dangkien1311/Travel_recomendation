@@ -1,4 +1,4 @@
-import { X, MapPin, Navigation, Calendar, Users, DollarSign, Hotel, Plane, Camera, Sparkles } from 'lucide-react';
+import { X, MapPin, Navigation, Calendar, Users, DollarSign, Hotel, Plane, Camera, Sparkles, AlertTriangle } from 'lucide-react';
 import HotelCard from './HotelCard';
 import TransportCard from './TransportCard';
 import AttractionCard from './AttractionCard';
@@ -30,19 +30,21 @@ function TravelPlanModal({ isOpen, onClose, plan }) {
                   <p className="font-semibold text-gray-900">{activity.activity}</p>
                   <p className="text-sm text-gray-600">{activity.description}</p>
                 </div>
-                {activity.estimated_cost > 0 && (
-                  <span className="text-sm font-medium text-primary-600">
-                    ${Math.round(activity.estimated_cost)}
-                  </span>
-                )}
+                <span className={`text-sm font-medium px-2 py-1 rounded-lg ${
+                  activity.estimated_cost > 0 
+                    ? 'bg-primary-100 text-primary-700' 
+                    : 'bg-green-100 text-green-700'
+                }`}>
+                  {activity.estimated_cost > 0 
+                    ? `$${Math.round(activity.estimated_cost)}` 
+                    : 'Free'}
+                </span>
               </div>
             </div>
           ))}
-          {day.day_total > 0 && (
-            <div className="text-right text-sm font-medium text-gray-700">
-              Day Total: ${Math.round(day.day_total)}
-            </div>
-          )}
+          <div className="text-right text-sm font-medium text-gray-700">
+            Day Total: ${Math.round(day.day_total || 0)}
+          </div>
         </div>
       </div>
     ));
@@ -176,6 +178,31 @@ function TravelPlanModal({ isOpen, onClose, plan }) {
                 {planData?.num_people} travelers
               </span>
             </div>
+            
+            {/* Budget Warning */}
+            {planData?.budget_exceeded && planData?.budget_warning && (
+              <div className="mt-4 bg-red-50 border border-red-200 rounded-lg p-4">
+                <div className="flex items-start gap-3">
+                  <AlertTriangle className="w-6 h-6 text-red-500 flex-shrink-0" />
+                  <div>
+                    <p className="text-red-700 font-semibold">⚠️ Budget Exceeded!</p>
+                    <p className="text-red-600 text-sm mt-1">{planData.budget_warning.message}</p>
+                    <p className="text-red-500 text-xs mt-1">{planData.budget_warning.suggestion}</p>
+                    <div className="mt-2 flex flex-wrap gap-2 text-xs">
+                      <span className="px-2 py-1 bg-red-100 text-red-700 rounded">
+                        Your Budget: <strong>${planData.budget?.toLocaleString()}</strong>
+                      </span>
+                      <span className="px-2 py-1 bg-red-100 text-red-700 rounded">
+                        Trip Cost: <strong>${planData.budget_warning.required_budget?.toLocaleString()}</strong>
+                      </span>
+                      <span className="px-2 py-1 bg-red-200 text-red-800 rounded font-semibold">
+                        Over by: ${planData.budget_warning.over_amount?.toLocaleString()}
+                      </span>
+                    </div>
+                  </div>
+                </div>
+              </div>
+            )}
           </div>
 
           {/* Itinerary */}
@@ -242,6 +269,62 @@ function TravelPlanModal({ isOpen, onClose, plan }) {
                     onSelect={() => {}}
                   />
                 ))}
+              </div>
+            </div>
+          )}
+
+          {/* Cost Summary */}
+          {planData?.cost_breakdown && (
+            <div className="px-6 pb-6">
+              <h3 className="text-lg font-bold text-gray-900 mb-3 flex items-center gap-2">
+                <DollarSign className="w-5 h-5 text-primary-500" />
+                Estimated Costs
+              </h3>
+              <div className="bg-gray-50 rounded-lg p-4">
+                <div className="grid grid-cols-2 md:grid-cols-4 gap-3 mb-4">
+                  <div className="bg-white rounded-lg p-3 text-center shadow-sm">
+                    <p className="text-xs text-gray-500 mb-1">Hotel</p>
+                    <p className="font-bold text-lg text-gray-900">
+                      ${planData.cost_breakdown.hotel?.toLocaleString() || 0}
+                    </p>
+                  </div>
+                  <div className="bg-white rounded-lg p-3 text-center shadow-sm">
+                    <p className="text-xs text-gray-500 mb-1">Transport</p>
+                    <p className="font-bold text-lg text-gray-900">
+                      ${planData.cost_breakdown.transport?.toLocaleString() || 0}
+                    </p>
+                  </div>
+                  <div className="bg-blue-50 rounded-lg p-3 text-center shadow-sm border border-blue-200">
+                    <p className="text-xs text-blue-600 mb-1">Activities Budget</p>
+                    <p className="font-bold text-lg text-blue-700">
+                      ${planData.cost_breakdown.activities_budget?.toLocaleString() || 0}
+                    </p>
+                    <p className="text-xs text-blue-500">Remaining</p>
+                  </div>
+                  <div className="bg-green-50 rounded-lg p-3 text-center shadow-sm border border-green-200">
+                    <p className="text-xs text-green-600 mb-1">Activities Actual</p>
+                    <p className="font-bold text-lg text-green-700">
+                      ${planData.cost_breakdown.activities_actual?.toLocaleString() || 0}
+                    </p>
+                    <p className="text-xs text-green-500">Real fees</p>
+                  </div>
+                </div>
+                <div className="border-t border-gray-200 pt-3 flex justify-between items-center">
+                  <span className="font-bold text-gray-900">Total Estimated</span>
+                  <span className={`font-bold text-2xl ${planData.budget_exceeded ? 'text-red-600' : 'text-primary-600'}`}>
+                    ${planData.cost_breakdown.estimated_total?.toLocaleString() || 0}
+                  </span>
+                </div>
+                {planData.cost_breakdown.remaining_budget !== undefined && (
+                  <div className="mt-2 text-right">
+                    <span className={`text-sm ${planData.cost_breakdown.remaining_budget >= 0 ? 'text-green-600' : 'text-red-600'}`}>
+                      {planData.cost_breakdown.remaining_budget >= 0 
+                        ? `$${planData.cost_breakdown.remaining_budget.toLocaleString()} remaining in budget`
+                        : `$${Math.abs(planData.cost_breakdown.remaining_budget).toLocaleString()} over budget`
+                      }
+                    </span>
+                  </div>
+                )}
               </div>
             </div>
           )}
